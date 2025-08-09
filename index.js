@@ -18,7 +18,8 @@ app.post('/api/generate-config', async (req, res) => {
     try {
         // 1. Verify the World ID proof via direct API call
         console.log("Verifying World ID proof via API...");
-        const { proof, merkle_root, nullifier_hash } = req.body;
+        // ✅ FIX: Added verification_level to the list of variables received from the frontend
+        const { proof, merkle_root, nullifier_hash, verification_level } = req.body;
         const verifyRes = await axios.post(
             `https://developer.worldcoin.org/api/v2/verify/${WORLDCOIN_APP_ID}`,
             {
@@ -26,6 +27,7 @@ app.post('/api/generate-config', async (req, res) => {
                 merkle_root: merkle_root,
                 nullifier_hash: nullifier_hash,
                 action: WORLDCOIN_ACTION,
+                verification_level: verification_level, // ✅ FIX: Added verification_level to the data sent to Worldcoin
             },
             { headers: { 'Content-Type': 'application/json' } }
         );
@@ -68,8 +70,8 @@ app.post('/api/generate-config', async (req, res) => {
     }
 });
 
-const PORT = 3001;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`? Backend server running on port ${PORT}`);
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+    console.log(`✅ Backend server running on port ${PORT}`);
     console.log('Waiting for requests from your Mini App...');
 });
