@@ -29,18 +29,31 @@ app.post('/api/generate-config', async (req, res) => {
         const sessionCookie = Array.isArray(cookie) ? cookie.join('; ') : cookie;
         console.log("Successfully logged into wg-easy.");
 
-        // Step 2: Create a new VPN client with a random name
-        console.log("Creating new VPN client...");
+        // Step 2: Create a new VPN client with a unique random name
         const clientName = `user-${randomBytes(4).toString('hex')}`;
-        const createClientResponse = await axios.post(
+        console.log(`Creating new VPN client named: ${clientName}`);
+        await axios.post(
             `${WGEASY_URL}/api/wireguard/client`,
             { name: clientName },
             { headers: { Cookie: sessionCookie } }
         );
-        const newClientId = createClientResponse.data.id;
-        console.log(`VPN Client created with ID: ${newClientId}`);
+        console.log("Client creation request sent.");
 
-        // ✅ FIX: Step 3: Fetch the correctly formatted configuration file
+        // ✅ FIX: Step 3: Fetch all clients to find the ID of the one we just created
+        console.log("Fetching all clients to find the new client's ID...");
+        const listClientsResponse = await axios.get(
+            `${WGEASY_URL}/api/wireguard/client`,
+            { headers: { Cookie: sessionCookie } }
+        );
+
+        const newClient = listClientsResponse.data.find(client => client.name === clientName);
+        if (!newClient) {
+            throw new Error('Could not find the newly created client in the list.');
+        }
+        const newClientId = newClient.id;
+        console.log(`Found new client with ID: ${newClientId}`);
+
+        // Step 4: Fetch the correctly formatted configuration file using the ID
         console.log("Fetching formatted configuration for the new client...");
         const getConfigResponse = await axios.get(
             `${WGEASY_URL}/api/wireguard/client/${newClientId}/configuration`,
@@ -48,9 +61,9 @@ app.post('/api/generate-config', async (req, res) => {
         );
 
         console.log("Configuration fetched. Sending config back.");
-        // Step 4: Send the formatted configuration back to the user's app
+        // Step 5: Send the formatted configuration back to the user's app
         res.setHeader('Content-Type', 'text/plain');
-        res.send(getConfigResponse.data); // Send the correct data
+        res.send(getConfigResponse.data);
 
     } catch (error) {
         console.error("An error occurred:", error.response?.data || error.message);
